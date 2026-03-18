@@ -1,0 +1,128 @@
+{
+  "version": 18,
+  "unmapped_passthrough_layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "partial_scroll_timeout": 1000000,
+  "interval_override": 0,
+  "tap_hold_threshold": 200000,
+  "gpio_debounce_time_ms": 5,
+  "our_descriptor_number": 0,
+  "ignore_auth_dev_inputs": false,
+  "macro_entry_duration": 1,
+  "gpio_output_mode": 0,
+  "input_labels": 0,
+  "normalize_gamepad_inputs": true,
+  "mappings": [
+    {
+      "target_usage": "0x00010030",
+      "source_usage": "0xfff30007",
+      "scaling": 1000,
+      "layers": [
+        0
+      ],
+      "sticky": false,
+      "tap": false,
+      "hold": false,
+      "source_port": 0,
+      "target_port": 0
+    },
+    {
+      "target_usage": "0x00010031",
+      "source_usage": "0xfff30008",
+      "scaling": 1000,
+      "layers": [
+        0
+      ],
+      "sticky": false,
+      "tap": false,
+      "hold": false,
+      "source_port": 0,
+      "target_port": 0
+    },
+    {
+      "target_usage": "0x00090001",
+      "source_usage": "0x00090001",
+      "scaling": 1000,
+      "layers": [
+        0
+      ],
+      "sticky": false,
+      "tap": false,
+      "hold": false,
+      "source_port": 0,
+      "target_port": 0
+    },
+    {
+      "target_usage": "0x00090002",
+      "source_usage": "0x00090002",
+      "scaling": 1000,
+      "layers": [
+        0
+      ],
+      "sticky": false,
+      "tap": false,
+      "hold": false,
+      "source_port": 0,
+      "target_port": 0
+    },
+    {
+      "target_usage": "0x00090003",
+      "source_usage": "0x00090003",
+      "scaling": 1000,
+      "layers": [
+        0
+      ],
+      "sticky": false,
+      "tap": false,
+      "hold": false,
+      "source_port": 0,
+      "target_port": 0
+    },
+    {
+      "target_usage": "0x00090004",
+      "source_usage": "0x00090004",
+      "scaling": 1000,
+      "layers": [
+        0
+      ],
+      "sticky": false,
+      "tap": false,
+      "hold": false,
+      "source_port": 0,
+      "target_port": 0
+    },
+    {
+      "target_usage": "0x00090005",
+      "source_usage": "0x00090005",
+      "scaling": 1000,
+      "layers": [
+        0
+      ],
+      "sticky": false,
+      "tap": false,
+      "hold": false,
+      "source_port": 0,
+      "target_port": 0
+    }
+  ],
+  "macros": [],
+  "expressions": [
+    "1000 dup 3000 store",
+    "0x00090002 input_state_binary 0x00090001 input_state_binary mul 3000 recall 1000 eq mul dup 5000 store",
+    "0x00090002 prev_input_state_binary 0x00090001 prev_input_state_binary mul 3000 recall 1000 eq mul dup 6000 store",
+    "5000 recall 6000 recall 2000 recall time ifte time ifte dup 2000 store",
+    "5000 recall time 2000 recall sub 5000 sub 0 max 133000 div dup 1000 mod sub 1000 add 1000 30000 clamp 1000 ifte dup 1000 store",
+    "time 2000 recall sub 5000 sub 0 max 133000 mod dup 4000 store",
+    "900 1076 mul 1000 mul 1000 div -14000 1000 recall 29000 eq swap -14000 swap ifte 1000 recall 28000 eq swap -14000 swap ifte 1000 recall 27000 eq swap -14000 swap ifte 1000 recall 26000 eq swap -14000 swap ifte 1000 recall 25000 eq swap -14000 swap ifte 1000 recall 24000 eq swap -13000 swap ifte 1000 recall 23000 eq swap -14000 swap ifte 1000 recall 22000 eq swap -14000 swap ifte 1000 recall 21000 eq swap -13000 swap ifte 1000 recall 20000 eq swap -13000 swap ifte 1000 recall 19000 eq swap -14000 swap ifte 1000 recall 18000 eq swap -14000 swap ifte 1000 recall 17000 eq swap -12000 swap ifte 1000 recall 16000 eq swap -13000 swap ifte 1000 recall 15000 eq swap -14000 swap ifte 1000 recall 14000 eq swap -13000 swap ifte 1000 recall 13000 eq swap -13000 swap ifte 1000 recall 12000 eq swap -13000 swap ifte 1000 recall 11000 eq swap -13000 swap ifte 1000 recall 10000 eq swap -14000 swap ifte 1000 recall 9000 eq swap -14000 swap ifte 1000 recall 8000 eq swap -12000 swap ifte 1000 recall 7000 eq swap -12000 swap ifte 1000 recall 6000 eq swap -11000 swap ifte 1000 recall 5000 eq swap -10000 swap ifte 1000 recall 4000 eq swap -8000 swap ifte 1000 recall 3000 eq swap -6000 swap ifte 1000 recall 2000 eq swap -3000 swap ifte 1000 recall 1000 eq swap 0 swap ifte mul dup 7000 store 4000 recall 1000 add 1000 100000 clamp swap mul 100000 div round 4000 recall 1000 100000 clamp 7000 recall mul 100000 div round sub 5000 recall 4000 recall 100000 lt mul mul",
+    "900 1076 mul 1000 mul 1000 div 20000 1000 recall 29000 eq swap 20000 swap ifte 1000 recall 28000 eq swap 20000 swap ifte 1000 recall 27000 eq swap 20000 swap ifte 1000 recall 26000 eq swap 21000 swap ifte 1000 recall 25000 eq swap 20000 swap ifte 1000 recall 24000 eq swap 20000 swap ifte 1000 recall 23000 eq swap 21000 swap ifte 1000 recall 22000 eq swap 20000 swap ifte 1000 recall 21000 eq swap 21000 swap ifte 1000 recall 20000 eq swap 20000 swap ifte 1000 recall 19000 eq swap 20000 swap ifte 1000 recall 18000 eq swap 21000 swap ifte 1000 recall 17000 eq swap 20000 swap ifte 1000 recall 16000 eq swap 20000 swap ifte 1000 recall 15000 eq swap 20000 swap ifte 1000 recall 14000 eq swap 20000 swap ifte 1000 recall 13000 eq swap 20000 swap ifte 1000 recall 12000 eq swap 20000 swap ifte 1000 recall 11000 eq swap 20000 swap ifte 1000 recall 10000 eq swap 20000 swap ifte 1000 recall 9000 eq swap 20000 swap ifte 1000 recall 8000 eq swap 20000 swap ifte 1000 recall 7000 eq swap 20000 swap ifte 1000 recall 6000 eq swap 20000 swap ifte 1000 recall 5000 eq swap 20000 swap ifte 1000 recall 4000 eq swap 20000 swap ifte 1000 recall 3000 eq swap 20000 swap ifte 1000 recall 2000 eq swap 20000 swap ifte 1000 recall 1000 eq swap 20000 swap ifte mul dup 8000 store 4000 recall 1000 add 1000 100000 clamp swap mul 100000 div round 4000 recall 1000 100000 clamp 8000 recall mul 100000 div round sub 5000 recall 4000 recall 100000 lt mul mul"
+  ],
+  "quirks": []
+}
