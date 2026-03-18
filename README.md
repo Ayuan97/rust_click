@@ -1,89 +1,111 @@
 # click
 
-This repository is a small toolchain for building HID Remapper JSON configs.
-It is not a standalone application. The main purpose is to:
+这是一个围绕 `HID Remapper` 配置生成和调参的小工具仓库，不是传统意义上的独立应用项目。
 
-- record HID monitor data from a HID Remapper device
-- retune per-shot recoil tables from CSV captures
-- generate importable JSON configs for single-weapon and multi-weapon setups
+这个仓库主要用于：
 
-## Upstream References
+- 从 HID Remapper 设备录制监控数据
+- 根据 CSV 自动微调每一发的压枪参数
+- 生成单武器或多武器可导入的 JSON 配置
+- 用图形界面可视化和编辑多武器参数
 
-- Firmware / upstream project:
+## 上游参考
+
+- 固件 / 上游项目：
   [jfedor2/hid-remapper](https://github.com/jfedor2/hid-remapper)
-- Web configuration and debugging tool:
+- 在线配置与调试工具：
   [remapper.org/config](https://www.remapper.org/config/)
 
-This repo generates JSON files that are intended to be imported into the HID
-Remapper configuration tool above.
+本仓库生成的 JSON，目标就是导入上面的 HID Remapper 配置工具。
 
-## Main Workflow
+## 主要流程
 
-1. Record monitor data into CSV with `rec_lr.cmd`.
-2. Generate or retune a single-weapon config with `gen_json.cmd`.
-3. Generate a multi-weapon config with `wk.cmd`.
-4. Import the generated JSON into the HID Remapper web config tool.
+1. 用 `rec_lr.cmd` 录制 HID monitor 数据到 CSV。
+2. 用 `gen_json.cmd` 生成或回调单武器配置。
+3. 用 `wk.cmd` 生成多武器配置。
+4. 把生成出的 JSON 导入 HID Remapper 配置页面。
 
-## Entry Scripts
+## 顶层脚本
 
-- `rec_lr.cmd`: record monitor output to `data/captures/*.csv`
-- `gen_json.cmd`: build a single-weapon JSON config, optionally with auto-retune
-- `go.cmd`: run record and generate in sequence
-- `wk.cmd`: build the keyboard-driven multi-weapon config
-- `trajectory_lab.cmd`: launch the GUI trajectory workbench with temporary GUI dependencies via `uv`
+- `rec_lr.cmd`
+  录制 monitor 输出到 `data/captures/*.csv`
+- `gen_json.cmd`
+  生成单武器 JSON，支持可选自动 retune
+- `go.cmd`
+  顺序执行“录制 -> 生成”
+- `wk.cmd`
+  生成键盘切枪的多武器配置
+- `trajectory_lab.cmd`
+  用 `uv` 临时拉起 GUI 依赖，启动图形化轨迹工作台
 
-## GUI Workbench
+## 图形化轨迹工作台
 
-The repo now includes a first-pass desktop editor for multi-weapon params.
+仓库里已经包含一个第一版桌面调参工具，主要面向多武器参数文件。
 
-- open existing files from `data/params/*.json`
-- switch between weapons
-- edit the 30-shot `x_steps` / `y_steps` table
-- preview per-shot deltas and cumulative trajectory
-- drag cumulative trajectory points to adjust a specific shot
-- capture a baseline and compare current vs reference with dashed overlays
-- save params back to JSON
-- export a HID Remapper config by calling `scripts/build_multi_weapon_config.py`
+当前支持：
 
-Launch it with:
+- 打开 `data/params/*.json`
+- 切换武器
+- 编辑 30 发 `x_steps / y_steps`
+- 查看每发步进图
+- 查看累计轨迹图
+- 直接拖动累计轨迹点来修改某一发
+- 记录基准轨迹并和当前轨迹做虚线对比
+- 撤销 / 重做
+- 保存参数
+- 调用 `scripts/build_multi_weapon_config.py` 导出 HID Remapper JSON
+
+启动方式：
 
 ```bat
 trajectory_lab.cmd
 ```
 
-Or directly:
+或者直接运行：
 
 ```bat
 uv run --with PySide6 --with pyqtgraph python -m app.main
 ```
 
-Current scope:
+当前范围：
 
-- supports the multi-weapon `global + weapons[]` params format
-- does not yet support the single-weapon `ak_tune_params` format
+- 支持多武器参数格式：`global + weapons[]`
+- 还不支持单武器 `ak_tune_params` 格式的完整 GUI 编辑
 
-Detailed Chinese usage guide:
+详细中文使用说明见：
 
 - `USAGE.md`
 
-## Python Scripts
+## Python 脚本
 
-- `scripts/record_monitor_csv.py`: reads HID monitor reports through `hidapi`
-- `scripts/retune_from_csv.py`: derives offsets from recorded CSV data
-- `scripts/apply_ak_tune.py`: applies single-weapon tuning into a base JSON
-- `scripts/build_multi_weapon_config.py`: compiles multi-weapon expressions
-- `scripts/gen_extra_weapon_configs.py`: generates extra config variants
+- `scripts/record_monitor_csv.py`
+  通过 `hidapi` 读取 HID monitor 报告
+- `scripts/retune_from_csv.py`
+  从录制出来的 CSV 自动生成偏移量
+- `scripts/apply_ak_tune.py`
+  把单武器调参结果写回基础 JSON
+- `scripts/build_multi_weapon_config.py`
+  把多武器参数编译成 HID Remapper expressions
+- `scripts/gen_extra_weapon_configs.py`
+  生成额外的武器配置变体
 
-## Data Layout
+## 目录结构
 
-- `data/configs/`: base templates and generated import JSON files
-- `data/params/`: weapon parameters and tuning tables
-- `data/captures/`: recorded monitor CSV files
-- `Sorin/`: legacy source material used as a reference during migration
+- `app/`
+  图形化轨迹工作台代码
+- `data/configs/`
+  基础模板和生成后的导入 JSON
+- `data/params/`
+  武器参数、调参表
+- `data/captures/`
+  录制得到的 monitor CSV
+- `scripts/`
+  配置生成、回调、录制相关脚本
+- `Sorin/`
+  旧版宏/配置参考素材
 
-## Notes
+## 说明
 
-- The generated configs target HID Remapper firmware version 18 JSON format.
-- The browser-based config tool exposes monitor, expressions, actions, import,
-  export, and firmware flashing functions.
-- Hardware access is required to run the recording path end-to-end.
+- 当前生成的配置目标格式是 HID Remapper `version 18` JSON
+- 浏览器配置工具可用于监控、表达式调试、导入导出、刷写固件等
+- 录制链路需要真实 HID Remapper 硬件
