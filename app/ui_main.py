@@ -98,13 +98,16 @@ GUIDE_TEXT = """快速上手
 
 
 class DraggablePathItem(pg.GraphItem):
-    def __init__(self, on_commit) -> None:
+    def __init__(self, on_commit, on_click) -> None:
         super().__init__()
         self._on_commit = on_commit
+        self._on_click = on_click
         self._data: dict[str, object] = {}
         self._base_positions: np.ndarray | None = None
         self._drag_index: int | None = None
         self._drag_offset: np.ndarray | None = None
+        self._tooltip_entries: list[dict[str, object]] = []
+        self.scatter.sigClicked.connect(self._handle_scatter_clicked)
 
     def set_path(
         self,
@@ -112,6 +115,7 @@ class DraggablePathItem(pg.GraphItem):
         *,
         brushes: list[pg.QtGui.QBrush],
         sizes: list[float],
+        metadata: list[dict[str, object]],
     ) -> None:
         count = positions.shape[0]
         adjacency = (
@@ -119,6 +123,7 @@ class DraggablePathItem(pg.GraphItem):
             if count > 1
             else np.empty((0, 2), dtype=int)
         )
+        self._tooltip_entries = metadata
         self._data = {
             "pos": positions.copy(),
             "adj": adjacency,
@@ -129,11 +134,36 @@ class DraggablePathItem(pg.GraphItem):
             "pen": pg.mkPen("#57606a", width=2),
             "symbolPen": pg.mkPen("#1f2328", width=0.8),
             "symbolBrush": brushes,
+            "hoverable": True,
+            "tip": self._format_tooltip,
         }
         self._apply_data()
 
     def _apply_data(self) -> None:
         pg.GraphItem.setData(self, **self._data)
+
+    def _handle_scatter_clicked(self, _scatter, points, _event) -> None:
+        if not points:
+            return
+        index = int(points[0].data())
+        if index <= 0:
+            return
+        self._on_click(index - 1)
+
+    def _format_tooltip(self, x, y, data) -> str:
+        index = int(data)
+        if index < 0 or index >= len(self._tooltip_entries):
+            return ""
+        entry = self._tooltip_entries[index]
+        if index == 0:
+            return "起点\n累计 X: 0.00\n累计 Y: 0.00"
+        return (
+            f"第 {entry['shot']} 发\n"
+            f"X: {entry['x_step']}\n"
+            f"Y: {entry['y_step']}\n"
+            f"累计 X: {entry['cum_x']:.2f}\n"
+            f"累计 Y: {entry['cum_y']:.2f}"
+        )
 
     def mouseDragEvent(self, ev) -> None:
         if ev.button() != Qt.MouseButton.LeftButton:
@@ -186,11 +216,11 @@ class DraggablePathItem(pg.GraphItem):
 
 
 class EditablePathPlot(pg.PlotWidget):
-    def __init__(self, *, on_commit) -> None:
+    def __init__(self, *, on_commit, on_click) -> None:
         super().__init__()
         self._baseline_curve = pg.PlotCurveItem(pen=pg.mkPen("#8b949e", width=1.5, style=Qt.PenStyle.DashLine))
         self.addItem(self._baseline_curve)
-        self._path_item = DraggablePathItem(on_commit=on_commit)
+        self._path_item = DraggablePathItem(on_commit=on_commit, on_click=on_click)
         self.addItem(self._path_item)
         self.setLabel("bottom", "累计 X")
         self.setLabel("left", "累计 Y")
@@ -198,7 +228,15 @@ class EditablePathPlot(pg.PlotWidget):
         self.getPlotItem().invertY(True)
         self.setToolTip("拖动某一发的轨迹点，可以直接调整这一发的 X/Y 步进。")
 
-    def set_path_data(self, path_x: list[float], path_y: list[float], *, highlighted_rows: list[int]) -> None:
+    def set_path_data(
+        self,
+        path_x: list[float],
+        path_y: list[float],
+        *,
+        x_steps: list[int],
+        y_steps: list[int],
+        highlighted_rows: list[int],
+    ) -> None:
         if not path_x or not path_y or len(path_x) != len(path_y):
             self.clear_path()
             return
@@ -206,23 +244,51 @@ class EditablePathPlot(pg.PlotWidget):
         positions = np.column_stack((np.array(path_x, dtype=float), np.array(path_y, dtype=float)))
         brushes: list[pg.QtGui.QBrush] = []
         sizes: list[float] = []
+        metadata: list[dict[str, object]] = []
         highlighted = set(highlighted_rows)
         for index in range(len(positions)):
             if index == 0:
                 brushes.append(pg.mkBrush("#cf222e"))
                 sizes.append(10.0)
+                metadata.append(
+                    {
+                        "shot": 0,
+                        "x_step": 0,
+                        "y_step": 0,
+                        "cum_x": float(path_x[index]),
+                        "cum_y": float(path_y[index]),
+                    }
+                )
             elif (index - 1) in highlighted:
                 brushes.append(pg.mkBrush("#1f6feb"))
                 sizes.append(11.0)
+                metadata.append(
+                    {
+                        "shot": index,
+                        "x_step": x_steps[index - 1],
+                        "y_step": y_steps[index - 1],
+                        "cum_x": float(path_x[index]),
+                        "cum_y": float(path_y[index]),
+                    }
+                )
             else:
                 brushes.append(pg.mkBrush("#2da44e"))
                 sizes.append(8.0)
+                metadata.append(
+                    {
+                        "shot": index,
+                        "x_step": x_steps[index - 1],
+                        "y_step": y_steps[index - 1],
+                        "cum_x": float(path_x[index]),
+                        "cum_y": float(path_y[index]),
+                    }
+                )
 
-        self._path_item.set_path(positions, brushes=brushes, sizes=sizes)
+        self._path_item.set_path(positions, brushes=brushes, sizes=sizes, metadata=metadata)
         self.enableAutoRange(axis="xy", enable=True)
 
     def clear_path(self) -> None:
-        self._path_item.set_path(np.empty((0, 2), dtype=float), brushes=[], sizes=[])
+        self._path_item.set_path(np.empty((0, 2), dtype=float), brushes=[], sizes=[], metadata=[])
 
     def set_baseline_path(self, path_x: list[float], path_y: list[float]) -> None:
         self._baseline_curve.setData(path_x, path_y)
@@ -336,13 +402,24 @@ class TrajectoryWorkbench(QMainWindow):
         self.delta_plot.setLabel("left", "步进值")
         self.delta_plot.showGrid(x=True, y=True, alpha=0.2)
 
-        self.path_plot = EditablePathPlot(on_commit=self._commit_path_drag)
+        self.edit_condition_label = QLabel()
+        self.edit_condition_label.setStyleSheet(
+            "font-size: 16px; font-weight: 700; color: #0f172a; "
+            "padding: 8px 12px; background: #e2f0ff; border: 1px solid #9ec5fe; border-radius: 6px;"
+        )
+
+        self.path_plot = EditablePathPlot(on_commit=self._commit_path_drag, on_click=self._on_path_point_clicked)
 
         plots_splitter = QSplitter(Qt.Orientation.Vertical)
         plots_splitter.addWidget(self.delta_plot)
         plots_splitter.addWidget(self.path_plot)
         plots_splitter.setStretchFactor(0, 1)
         plots_splitter.setStretchFactor(1, 1)
+
+        center_panel = QWidget()
+        center_layout = QVBoxLayout(center_panel)
+        center_layout.addWidget(self.edit_condition_label)
+        center_layout.addWidget(plots_splitter, 1)
 
         self.weapon_name_edit = QLineEdit()
         self.weapon_id_box = make_spinbox(minimum=1, maximum=999)
@@ -407,7 +484,7 @@ class TrajectoryWorkbench(QMainWindow):
 
         main_splitter = QSplitter(Qt.Orientation.Horizontal)
         main_splitter.addWidget(left_panel)
-        main_splitter.addWidget(plots_splitter)
+        main_splitter.addWidget(center_panel)
         main_splitter.addWidget(right_panel)
         main_splitter.setStretchFactor(0, 0)
         main_splitter.setStretchFactor(1, 1)
@@ -418,6 +495,7 @@ class TrajectoryWorkbench(QMainWindow):
         layout.addWidget(main_splitter)
         self.setCentralWidget(container)
         self.setStatusBar(QStatusBar())
+        self._update_edit_condition_label()
 
     def _wire_signals(self) -> None:
         self.open_action.triggered.connect(self.open_document)
@@ -444,6 +522,8 @@ class TrajectoryWorkbench(QMainWindow):
 
         self.scope_mode_combo.currentTextChanged.connect(self.refresh_plots)
         self.stance_mode_combo.currentTextChanged.connect(self.refresh_plots)
+        self.scope_mode_combo.currentTextChanged.connect(self._update_edit_condition_label)
+        self.stance_mode_combo.currentTextChanged.connect(self._update_edit_condition_label)
 
         self.weapon_name_edit.editingFinished.connect(self._update_weapon_from_ui)
         for widget in (
@@ -558,6 +638,17 @@ class TrajectoryWorkbench(QMainWindow):
     def current_stance_mode(self) -> str:
         return str(self.stance_mode_combo.currentData() or "stand")
 
+    def current_scope_label(self) -> str:
+        return self.scope_mode_combo.currentText()
+
+    def current_stance_label(self) -> str:
+        return self.stance_mode_combo.currentText()
+
+    def _update_edit_condition_label(self) -> None:
+        self.edit_condition_label.setText(
+            f"当前编辑条件：{self.current_scope_label()} / {self.current_stance_label()}"
+        )
+
     def _apply_document_to_ui(self, document: ParameterDocument, *, preferred_index: int | None = None) -> None:
         self.document = document
         target_index = preferred_index if preferred_index is not None else self.current_weapon_index
@@ -572,12 +663,26 @@ class TrajectoryWorkbench(QMainWindow):
         self.tune_mult_y_box.setValue(document.global_config.tune_mult_y)
         self.file_label.setText(str(document.path) if document.path else "未保存的参数文件")
         self._loading_ui = False
+        self._update_edit_condition_label()
 
         if document.weapons:
             safe_index = min(max(target_index if target_index is not None else 0, 0), len(document.weapons) - 1)
             self.weapon_list.setCurrentRow(safe_index)
         else:
             self.refresh_plots()
+
+    def _select_shot_row(self, shot_index: int) -> None:
+        if shot_index < 0 or shot_index >= self.step_table.rowCount():
+            return
+        self.step_table.clearSelection()
+        self.step_table.selectRow(shot_index)
+        item = self.step_table.item(shot_index, 0)
+        if item is not None:
+            self.step_table.scrollToItem(item, QAbstractItemView.ScrollHint.PositionAtCenter)
+
+    def _on_path_point_clicked(self, shot_index: int) -> None:
+        self._select_shot_row(shot_index)
+        self.statusBar().showMessage(f"已选中第 {shot_index + 1} 发。", 2000)
 
     def _restore_snapshot(self, snapshot: str) -> None:
         current_path = self.document.path if self.document else None
@@ -923,9 +1028,8 @@ class TrajectoryWorkbench(QMainWindow):
 
         self._loading_ui = True
         self._reload_step_table(weapon)
-        self.step_table.clearSelection()
-        self.step_table.selectRow(shot_index)
         self._loading_ui = False
+        self._select_shot_row(shot_index)
 
         self.mark_dirty()
         self.refresh_plots()
@@ -1020,4 +1124,10 @@ class TrajectoryWorkbench(QMainWindow):
             self.path_plot.set_baseline_path(baseline_path_x, baseline_path_y)
         else:
             self.path_plot.clear_baseline()
-        self.path_plot.set_path_data(path_x, path_y, highlighted_rows=selected_rows)
+        self.path_plot.set_path_data(
+            path_x,
+            path_y,
+            x_steps=weapon.x_steps,
+            y_steps=weapon.y_steps,
+            highlighted_rows=selected_rows,
+        )
