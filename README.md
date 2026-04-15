@@ -101,8 +101,10 @@ uv run --with PySide6 --with pyqtgraph python -m app.main
   录制得到的 monitor CSV
 - `scripts/`
   配置生成、回调、录制相关脚本
-- `Sorin/`
-  旧版宏/配置参考素材
+- `recoil/`
+  从 Rust content.bundle 提取武器后膛数据的脚本和产出
+- `radar/`
+  读取 Rust 内存数据并以地图形式展示（开发中）
 
 ## 说明
 

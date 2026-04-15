@@ -125,6 +125,8 @@ def compile_expressions(cfg: Dict[str, Any], params: Dict[str, Any]) -> List[str
     fov_comp = parse_int(global_cfg.get("fov_comp", 1076), "global.fov_comp")
     tune_mult_x = parse_int(global_cfg.get("tune_mult_x", 957), "global.tune_mult_x")
     tune_mult_y = parse_int(global_cfg.get("tune_mult_y", 957), "global.tune_mult_y")
+    jitter_x = parse_int(global_cfg.get("jitter_x", 0), "global.jitter_x")
+    jitter_y = parse_int(global_cfg.get("jitter_y", 0), "global.jitter_y")
 
     compiled_weapons: List[Dict[str, Any]] = []
     seen_ids = set()
@@ -303,16 +305,40 @@ def compile_expressions(cfg: Dict[str, Any], params: Dict[str, Any]) -> List[str
         f"time 2000 recall sub {start_delay_reg} recall sub 0 max {interval_reg} recall mod dup 4000 store"
     )
 
+    # Runtime jitter expressions: use time-based pseudo-random offset.
+    # time P mod 2 mul (P-1) sub  =>  symmetric range -(P-1) to +(P-1)
+    # Then scale: * jitter * 1000 / (P-1)  =>  approx ±jitter (in *1000 units)
+    # Use different primes for X/Y to decorrelate.
+    if jitter_x > 0:
+        x_jitter_expr = f"time 37 mod 2 mul 36 sub {jitter_x * 1000} mul 36 div"
+    else:
+        x_jitter_expr = ""
+    if jitter_y > 0:
+        y_jitter_expr = f"time 53 mod 2 mul 52 sub {jitter_y * 1000} mul 52 div"
+    else:
+        y_jitter_expr = ""
+
+    # X lookup with optional jitter added (values are in *1000 scale)
+    if x_jitter_expr:
+        x_value_expr = f"{x_lookup_expr} {x_jitter_expr} add"
+    else:
+        x_value_expr = x_lookup_expr
+    # Y lookup with optional jitter added
+    if y_jitter_expr:
+        y_value_expr = f"{y_lookup_expr} {y_jitter_expr} add"
+    else:
+        y_value_expr = y_lookup_expr
+
     expr7 = (
         f"{base_mult} {fov_comp} mul {tune_mult_x} mul 1000 div "
-        f"{x_lookup_expr} mul {combined_mult_reg} recall mul 1000 div dup 7000 store "
+        f"{x_value_expr} mul {combined_mult_reg} recall mul 1000 div dup 7000 store "
         f"4000 recall 1000 add 1000 {attack_reg} recall clamp swap mul 100000 div round "
         f"4000 recall 1000 {attack_reg} recall clamp 7000 recall mul 100000 div round sub "
         f"5000 recall 4000 recall {attack_reg} recall lt mul mul"
     )
     expr8 = (
         f"{base_mult} {fov_comp} mul {tune_mult_y} mul 1000 div "
-        f"{y_lookup_expr} mul {combined_mult_reg} recall mul 1000 div dup 8000 store "
+        f"{y_value_expr} mul {combined_mult_reg} recall mul 1000 div dup 8000 store "
         f"4000 recall 1000 add 1000 {attack_reg} recall clamp swap mul 100000 div round "
         f"4000 recall 1000 {attack_reg} recall clamp 8000 recall mul 100000 div round sub "
         f"5000 recall 4000 recall {attack_reg} recall lt mul mul"
